@@ -68,7 +68,7 @@ export function getFirefoxBaseDir(): string {
   if (IS_MACOS) {
     return join(homedir(), "Library", "Application Support", "Firefox");
   }
-  throw new Error(`Firefox extraction is not supported on ${PLATFORM}.`);
+  return join(homedir(), "AppData", "Roaming", "Mozilla", "Firefox");
 }
 
 export function parseProfilesIni(raw: string, baseDir: string): ProfileCandidate[] {
