@@ -212,3 +212,24 @@ describe("fetchThread", () => {
     expect(out[0]!.edited_ts).toBe("3.0");
   });
 });
+
+describe("runWatch advance hook", () => {
+  test("a thread with advance skips poll and diffThread", async () => {
+    const h = harness(() => []);
+    const t = thread([m("100.000002")]);
+    let calls = 0;
+    t.advance = async () => {
+      calls++;
+      return {
+        next: { ...t.snapshot, cursor: "100.000009" },
+        changes: { added: [m("100.000009")], edited: [], deleted: [] },
+      };
+    };
+    const res = await runWatch({ threads: [t], cfg: cfg(), ...h.io });
+    expect(res.reason).toBe("once");
+    expect(calls).toBe(1);
+    expect(h.polls).toEqual([]);
+    expect(h.batches[0]![0]!.changes.added.map((x) => x.ts)).toEqual(["100.000009"]);
+    expect(t.snapshot.cursor).toBe("100.000009");
+  });
+});

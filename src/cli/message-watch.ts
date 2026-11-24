@@ -32,6 +32,8 @@ export type WatchedThread = {
   snapshot: ThreadSnapshot;
   skipUserId?: string;
   polls: number;
+  // Replaces poll + diffThread, e.g. for a conversation watch.
+  advance?: (full: boolean) => Promise<{ next: ThreadSnapshot; changes: ThreadChanges }>;
 };
 
 export type WatchBatch = { thread: WatchedThread; changes: ThreadChanges }[];
@@ -114,13 +116,14 @@ export async function runWatch(input: {
       threads.map(async (t) => {
         try {
           const full = shouldReadFull(t, cfg);
-          const messages = await input.poll(t, full ? {} : { oldest: t.snapshot.cursor });
+          const { next, changes } = t.advance
+            ? await t.advance(full)
+            : diffThread(t.snapshot, {
+                messages: await input.poll(t, full ? {} : { oldest: t.snapshot.cursor }),
+                complete: full,
+                trackEdits: cfg.trackEdits,
+              });
           t.polls++;
-          const { next, changes } = diffThread(t.snapshot, {
-            messages,
-            complete: full,
-            trackEdits: cfg.trackEdits,
-          });
           if (next.cursor !== t.snapshot.cursor || hasChanges(changes)) {
             dirty.add(t);
           }

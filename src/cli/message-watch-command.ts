@@ -6,14 +6,20 @@ export function registerMessageWatchCommand(input: { messageCmd: Command; ctx: C
   input.messageCmd
     .command("watch")
     .description(
-      "Follow threads: report new, edited and deleted replies as one JSON line per batch until --once or --timeout",
+      "Follow threads or whole conversations (DMs, channels): report new, edited and deleted messages as one JSON line per batch until --once or --timeout",
     )
-    .argument("<targets...>", "Slack message URLs (root or any reply), or one #channel/channel ID")
+    .argument(
+      "<targets...>",
+      "Message URLs (follow that thread), or DM/channel IDs, #channels or user IDs (follow the whole conversation, including new thread replies)",
+    )
     .option(
       "--workspace <url>",
       "Workspace selector (full URL or unique substring; needed when using #channel/channel id across multiple workspaces)",
     )
-    .option("--thread-ts <ts>", "Thread root ts (single channel target)")
+    .option(
+      "--thread-ts <ts>",
+      "Follow this thread instead of the whole conversation (single channel target)",
+    )
     .option("--ts <ts>", "Message ts, resolved to its thread (single channel target)")
     .option(
       "--since <ts>",

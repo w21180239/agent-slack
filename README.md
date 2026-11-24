@@ -210,6 +210,7 @@ Follow threads instead of re-reading them by hand. `message watch` polls each th
 - **Edits and deletes.** Threads up to 200 messages are read in full each poll and diffed, so edited (with `before` text) and deleted replies are reported; reactions and link unfurls are not. Larger threads read only new replies, with a full sweep every 10th poll. `--no-edits` reads only new replies.
 - **Resumable.** State is saved under `~/.agent-slack/watch/`, so re-running the same command reports everything that changed while nothing was watching, without repeats. `--fresh` starts from now; `--no-state` saves nothing; `--since <ts>` starts fresh from that ts.
 - **Your own agent-slack posts and edits are skipped** (API posts carry no `client_msg_id`), so an agent is not woken by its own sends; changes you make in Slack still report. `--include-self` reports both.
+- **Whole conversations.** Pass a DM or channel ID, a `#channel` or a user ID (opens your DM with them) instead of a message URL to follow everything in it: new top-level messages, edits and deletes among the newest 20, and new replies in any thread whose root is among them (each reply carries its `thread_ts`). Each poll is one `conversations.history` call, plus one `conversations.replies` per thread that moved.
 
 ```bash
 # Wake on the next batch of changes, then exit (run as a background task; re-run to resume)
@@ -217,6 +218,9 @@ agent-slack message watch "https://workspace.slack.com/archives/C123/p1700000000
 
 # Follow two threads for a day as one stream
 agent-slack message watch "<thread-url-1>" "<thread-url-2>" --timeout 1d
+
+# Follow a DM with someone (user ID or DM channel ID), including thread replies in it
+agent-slack message watch U0123456789 --once --timeout 2h
 ```
 
 Optional:

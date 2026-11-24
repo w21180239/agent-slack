@@ -17,7 +17,14 @@ export type ThreadSnapshot = {
   cursor: string;
   reply_count?: number;
   messages: Record<string, TrackedMessage>;
+  // Whole-conversation watch (e.g. a DM): `messages` holds the newest top-level
+  // messages, `thread_ts` is "", and `latest_replies` maps thread roots to their newest reply.
+  kind?: "channel";
+  latest_replies?: Record<string, string>;
 };
+
+/** How many recent top-level messages a conversation watch keeps for edit and delete tracking. */
+export const CHANNEL_WINDOW = 20;
 
 export type ThreadChanges = {
   added: SlackMessageSummary[];
@@ -132,6 +139,54 @@ export function diffThread(
     next: { ...prev, cursor, reply_count: replyCount, messages: nextMessages },
     changes,
   };
+}
+
+export function isThreadRoot(m: SlackMessageSummary): boolean {
+  return !m.thread_ts || m.thread_ts === m.ts;
+}
+
+/**
+ * Diffs a conversation watch. `messages` must be every top-level message at or
+ * after the oldest tracked one (plus anything newer), so a tracked message that
+ * is missing was deleted. Keeps the newest `window` messages, and returns the
+ * thread roots whose `latest_reply` moved: the caller fetches replies after `after`.
+ */
+export function diffChannel(
+  prev: ThreadSnapshot,
+  opts: {
+    messages: SlackMessageSummary[];
+    trackEdits: boolean;
+    window: number;
+    baseline?: boolean;
+  },
+): {
+  next: ThreadSnapshot;
+  changes: ThreadChanges;
+  replyChecks: { root: string; after: string }[];
+} {
+  const { next, changes } = diffThread(prev, {
+    messages: opts.messages,
+    complete: true,
+    trackEdits: opts.trackEdits,
+    baseline: opts.baseline,
+  });
+  const keep = Object.keys(next.messages).sort(compareSlackTs).slice(-opts.window);
+  next.messages = Object.fromEntries(keep.map((ts) => [ts, next.messages[ts]!]));
+  const latest: Record<string, string> = {};
+  const replyChecks: { root: string; after: string }[] = [];
+  for (const m of opts.messages) {
+    if (!m.latest_reply || !isThreadRoot(m) || !next.messages[m.ts]) {
+      continue;
+    }
+    latest[m.ts] = m.latest_reply;
+    const after = prev.latest_replies?.[m.ts] ?? m.ts;
+    if (!opts.baseline && compareSlackTs(m.latest_reply, after) > 0) {
+      replyChecks.push({ root: m.ts, after });
+    }
+  }
+  next.kind = "channel";
+  next.latest_replies = latest;
+  return { next, changes, replyChecks };
 }
 
 export function hasChanges(c: ThreadChanges): boolean {
