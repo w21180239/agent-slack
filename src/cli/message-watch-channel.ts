@@ -56,28 +56,42 @@ export async function channelBaseline(input: {
   }).next;
 }
 
-/** One conversation poll: the tracked window plus anything newer, then new replies in threads that moved. */
+/**
+ * One conversation poll. Most polls read only messages after the cursor (a
+ * quiet read is ~140 bytes). A sweep re-reads the tracked window (~5 KB per
+ * message) to catch edits, deletes and thread replies: on the first poll,
+ * right after new messages, and at least every --max-interval.
+ */
 export function advanceChannel(input: {
   ctx: CliContext;
   t: WatchedThread & { workspaceUrl: string };
   cfg: WatchConfig;
+  now?: () => number;
 }) {
   const { ctx, t, cfg } = input;
+  const now = input.now ?? Date.now;
+  let sweepNext = true;
+  let lastSweepAt = 0;
   return () =>
     withClient({
       ctx,
       workspaceUrl: t.workspaceUrl,
       work: async (client) => {
         const prev = t.snapshot;
-        const oldest = Object.keys(prev.messages).sort(compareSlackTs)[0] ?? prev.cursor;
+        const sweep = sweepNext || now() - lastSweepAt >= cfg.maxIntervalMs;
+        const oldest = sweep
+          ? (Object.keys(prev.messages).sort(compareSlackTs)[0] ?? prev.cursor)
+          : prev.cursor;
         const messages = await fetchHistoryWindow(client, {
           channelId: prev.channel_id,
           oldest,
+          inclusive: sweep,
         });
         const { next, changes, replyChecks } = diffChannel(prev, {
           messages,
           trackEdits: cfg.trackEdits,
           window: CHANNEL_WINDOW,
+          complete: sweep,
         });
         const seen = new Set(changes.added.map((m) => m.ts));
         for (const { root, after } of replyChecks) {
@@ -96,6 +110,11 @@ export function advanceChannel(input: {
           }
         }
         changes.added.sort((a, b) => compareSlackTs(a.ts, b.ts));
+        if (sweep) {
+          lastSweepAt = now();
+        }
+        // New messages often draw a quick edit or thread reply: sweep on the next poll.
+        sweepNext = !sweep && changes.added.length > 0;
         return { next, changes };
       },
     });

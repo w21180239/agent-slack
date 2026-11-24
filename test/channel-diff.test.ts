@@ -75,3 +75,19 @@ describe("diffChannel", () => {
     expect(changes.deleted).toEqual([]);
   });
 });
+
+describe("diffChannel incremental", () => {
+  test("adds new messages, deletes nothing, keeps known reply marks", () => {
+    const prev = base([m("1.2", { latest_reply: "1.21" }), m("1.3")]);
+    const { next, changes } = diffChannel(prev, {
+      messages: [m("1.4")],
+      trackEdits: true,
+      window: 3,
+      complete: false,
+    });
+    expect(changes.added.map((x) => x.ts)).toEqual(["1.4"]);
+    expect(changes.deleted).toEqual([]);
+    expect(Object.keys(next.messages)).toEqual(["1.2", "1.3", "1.4"]);
+    expect(next.latest_replies).toEqual({ "1.2": "1.21" });
+  });
+});

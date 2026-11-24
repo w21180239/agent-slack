@@ -5,11 +5,11 @@ import { summarizeRaw, type SlackFileSummary, type SlackMessageSummary } from ".
 
 /**
  * Top-level messages for a watch, without file lookups: the newest `limit`
- * (one page), or every message at or after `oldest` (all pages).
+ * (one page), or every message at or after `oldest` (all pages; `inclusive: false` for after).
  */
 export async function fetchHistoryWindow(
   client: SlackApiClient,
-  input: { channelId: string; oldest?: string; limit?: number },
+  input: { channelId: string; oldest?: string; inclusive?: boolean; limit?: number },
 ): Promise<SlackMessageSummary[]> {
   const out: SlackMessageSummary[] = [];
   let cursor: string | undefined;
@@ -18,7 +18,7 @@ export async function fetchHistoryWindow(
       channel: input.channelId,
       limit: input.limit ?? 200,
       cursor,
-      ...(input.oldest ? { oldest: input.oldest, inclusive: true } : {}),
+      ...(input.oldest ? { oldest: input.oldest, inclusive: input.inclusive ?? true } : {}),
     });
     for (const m of asArray(resp.messages)) {
       if (!isRecord(m)) {

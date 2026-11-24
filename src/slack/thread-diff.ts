@@ -146,8 +146,8 @@ export function isThreadRoot(m: SlackMessageSummary): boolean {
 }
 
 /**
- * Diffs a conversation watch. `messages` must be every top-level message at or
- * after the oldest tracked one (plus anything newer), so a tracked message that
+ * Diffs a conversation watch. On a sweep (`complete`), `messages` must be every
+ * top-level message at or after the oldest tracked one, so a tracked message that
  * is missing was deleted. Keeps the newest `window` messages, and returns the
  * thread roots whose `latest_reply` moved: the caller fetches replies after `after`.
  */
@@ -157,6 +157,8 @@ export function diffChannel(
     messages: SlackMessageSummary[];
     trackEdits: boolean;
     window: number;
+    // false: `messages` are only those after the cursor, so nothing counts as deleted.
+    complete?: boolean;
     baseline?: boolean;
   },
 ): {
@@ -166,13 +168,21 @@ export function diffChannel(
 } {
   const { next, changes } = diffThread(prev, {
     messages: opts.messages,
-    complete: true,
+    complete: opts.complete ?? true,
     trackEdits: opts.trackEdits,
     baseline: opts.baseline,
   });
   const keep = Object.keys(next.messages).sort(compareSlackTs).slice(-opts.window);
   next.messages = Object.fromEntries(keep.map((ts) => [ts, next.messages[ts]!]));
+  // An incremental read only sees new roots, so known roots keep their entries.
   const latest: Record<string, string> = {};
+  if (opts.complete === false) {
+    for (const [ts, reply] of Object.entries(prev.latest_replies ?? {})) {
+      if (next.messages[ts]) {
+        latest[ts] = reply;
+      }
+    }
+  }
   const replyChecks: { root: string; after: string }[] = [];
   for (const m of opts.messages) {
     if (!m.latest_reply || !isThreadRoot(m) || !next.messages[m.ts]) {
