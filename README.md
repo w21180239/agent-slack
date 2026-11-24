@@ -76,6 +76,7 @@ agent-slack
 ├── message
 │   ├── get   <target>             # fetch 1 message (+ thread meta )
 │   ├── list  <target>             # fetch thread or recent channel messages
+│   ├── watch <target>             # follow a thread: stream new replies as NDJSON
 │   ├── send  <target> [text]      # send / reply / schedule (supports --attach, --blocks)
 │   ├── scheduled
 │   │   ├── list                   # list pending scheduled messages
@@ -201,6 +202,16 @@ agent-slack message list "#general" --with-reaction eyes --oldest "1770165109.00
 
 # Recent channel messages that do not have :dart:
 agent-slack message list "#general" --without-reaction dart --oldest "1770165109.000000" --limit 20
+```
+
+Follow a thread instead of re-reading it by hand. `message watch` polls the thread and prints one JSON line per new reply (`event: "reply"`), framed by a `watching` line and a final `done` line (`reason: "count"` or `"timeout"`). Your own replies are skipped unless you pass `--include-self`.
+
+```bash
+# Block until the next reply, then exit (good for a background agent task)
+agent-slack message watch "https://workspace.slack.com/archives/C123/p1700000000000000" --count 1 --timeout 2h
+
+# Stream every new reply for a day, polling each minute
+agent-slack message watch "https://workspace.slack.com/archives/C123/p1700000000000000" --interval 1m --timeout 1d
 ```
 
 Optional:

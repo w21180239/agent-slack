@@ -266,7 +266,13 @@ export function passesReactionNameFilters(
 
 export async function fetchThread(
   client: SlackApiClient,
-  input: { channelId: string; threadTs: string; includeReactions?: boolean },
+  input: {
+    channelId: string;
+    threadTs: string;
+    includeReactions?: boolean;
+    // Exclusive lower bound on reply ts; Slack still returns the root first.
+    oldest?: string;
+  },
 ): Promise<SlackMessageSummary[]> {
   const out: SlackMessageSummary[] = [];
   let cursor: string | undefined;
@@ -278,6 +284,7 @@ export async function fetchThread(
       limit: 200,
       cursor,
       include_all_metadata: input.includeReactions ? true : undefined,
+      ...(input.oldest ? { oldest: input.oldest, inclusive: false } : {}),
     });
     const messages = asArray(resp.messages);
     for (const m of messages) {
