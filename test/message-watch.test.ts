@@ -120,3 +120,24 @@ describe("fetchThread oldest", () => {
     expect(params[0]).toMatchObject({ oldest: "2.0", inclusive: false });
   });
 });
+
+describe("watchThread self filter", () => {
+  test("skips own API posts but emits own replies typed in a Slack client", async () => {
+    const typed = { ...msg("103.000000", "SELF"), client_msg_id: "7BD1505C-2D48-4E7B" };
+    const polls = [[msg("102.000000", "SELF"), typed, msg("104.000000")]];
+    const emitted: string[] = [];
+    await watchThread({
+      rootTs: "100.000001",
+      sinceTs: "101.000000",
+      skipUserId: "SELF",
+      intervalMs: 5000,
+      maxReplies: 1,
+      fetchReplies: async () => polls.shift() ?? [],
+      emit: (m) => {
+        emitted.push(m.ts);
+      },
+      sleep: async () => {},
+    });
+    expect(emitted).toEqual(["103.000000", "104.000000"]);
+  });
+});

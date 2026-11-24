@@ -28,7 +28,7 @@ If a capability named here is absent from installed help, report version skew in
 1. Run `agent-slack auth whoami`. If needed, import credentials with `auth import-desktop`, `auth import-brave`, `auth import-chrome`, or `auth import-firefox`, then run `auth test`.
 2. Prefer a Slack message URL when one is available. It carries the workspace, channel, and timestamp needed by most message operations.
 3. Choose the narrowest read operation: `message get` for one message, `message list` for a full thread or channel history, and `search messages` or `search files` for discovery.
-4. To follow up on a thread (e.g. after sending a message and waiting for answers), run `message watch <url> --count 1 --timeout <dur>` as a background task instead of re-reading the thread on a timer: it exits on the first new reply from someone else and prints it as NDJSON. For a continuous feed, drop `--count` and stream its lines through a line monitor. Pass the sent message's `ts` as `--since` if replies may arrive before the watch starts.
+4. To follow up on a thread (e.g. after sending a message and waiting for answers), run `message watch <url> --count 1 --timeout <dur>` as a background task instead of re-reading the thread on a timer: it exits on the first new reply and prints it as NDJSON. Your own agent-slack sends are skipped; replies the user types in Slack count. For a continuous feed, drop `--count` and stream its lines through a line monitor. Pass the sent message's `ts` as `--since` if replies may arrive before the watch starts.
 5. Use output limits such as `--limit`, `--max-body-chars`, and `--max-content-chars` to avoid unnecessary context.
 6. For a requested write, execute only the requested mutation and verify the resulting JSON metadata.
 

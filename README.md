@@ -204,7 +204,7 @@ agent-slack message list "#general" --with-reaction eyes --oldest "1770165109.00
 agent-slack message list "#general" --without-reaction dart --oldest "1770165109.000000" --limit 20
 ```
 
-Follow a thread instead of re-reading it by hand. `message watch` polls the thread and prints one JSON line per new reply (`event: "reply"`), framed by a `watching` line and a final `done` line (`reason: "count"` or `"timeout"`). Your own replies are skipped unless you pass `--include-self`.
+Follow a thread instead of re-reading it by hand. `message watch` polls the thread and prints one JSON line per new reply (`event: "reply"`), framed by a `watching` line and a final `done` line (`reason: "count"` or `"timeout"`). Replies you post through agent-slack (API posts, no `client_msg_id`) are skipped so an agent is not woken by its own sends; replies you type in Slack still report. `--include-self` reports both.
 
 ```bash
 # Block until the next reply, then exit (good for a background agent task)

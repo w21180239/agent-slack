@@ -28,6 +28,8 @@ export type SlackMessageSummary = {
   reply_count?: number;
   user?: string;
   bot_id?: string;
+  // Set by Slack clients when a person types the message; absent for API posts.
+  client_msg_id?: string;
   text: string;
   markdown: string;
   blocks?: unknown[];
@@ -206,6 +208,7 @@ export async function fetchChannelHistory(
         reply_count: getNumber(m.reply_count),
         user: getString(m.user),
         bot_id: getString(m.bot_id),
+        client_msg_id: getString(m.client_msg_id),
         text,
         markdown: slackMrkdwnToMarkdown(text),
         blocks: Array.isArray(m.blocks) ? (m.blocks as unknown[]) : undefined,
@@ -304,6 +307,7 @@ export async function fetchThread(
         reply_count: getNumber(m.reply_count),
         user: getString(m.user),
         bot_id: getString(m.bot_id),
+        client_msg_id: getString(m.client_msg_id),
         text,
         markdown: slackMrkdwnToMarkdown(text),
         blocks: Array.isArray(m.blocks) ? (m.blocks as unknown[]) : undefined,

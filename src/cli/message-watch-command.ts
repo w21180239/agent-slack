@@ -23,7 +23,10 @@ export function registerMessageWatchCommand(input: { messageCmd: Command; ctx: C
     .option("--interval <duration>", "Poll interval, e.g. 30, 30s, 2m (min 5s)", "30s")
     .option("--count <n>", "Exit after this many new replies (default: keep watching)")
     .option("--timeout <duration>", "Exit after this long, e.g. 30m, 2h, 1d (default: none)")
-    .option("--include-self", "Also report replies posted by the authenticated user")
+    .option(
+      "--include-self",
+      "Also report your own API-posted replies (agent-slack sends); replies you type in Slack always report",
+    )
     .option(
       "--max-body-chars <n>",
       "Max content characters to include (default 8000, -1 for unlimited)",

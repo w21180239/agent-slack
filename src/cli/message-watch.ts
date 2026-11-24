@@ -61,6 +61,8 @@ export async function watchThread(input: {
   fetchReplies: (oldest: string) => Promise<SlackMessageSummary[]>;
   emit: (msg: SlackMessageSummary) => Promise<void> | void;
   onError?: (err: unknown) => void;
+  // Skip this user's API-posted replies (no client_msg_id), e.g. agent-slack sends;
+  // replies they type in a Slack client still emit.
   skipUserId?: string;
   intervalMs: number;
   maxReplies?: number;
@@ -85,7 +87,7 @@ export async function watchThread(input: {
         .sort((a, b) => compareSlackTs(a.ts, b.ts));
       for (const m of fresh) {
         lastTs = m.ts;
-        if (input.skipUserId && m.user === input.skipUserId) {
+        if (input.skipUserId && m.user === input.skipUserId && !m.client_msg_id) {
           continue;
         }
         await input.emit(m);
