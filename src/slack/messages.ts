@@ -30,6 +30,8 @@ export type SlackMessageSummary = {
   bot_id?: string;
   // Set by Slack clients when a person types the message; absent for API posts.
   client_msg_id?: string;
+  edited_ts?: string;
+  subtype?: string;
   text: string;
   markdown: string;
   blocks?: unknown[];
@@ -275,6 +277,8 @@ export async function fetchThread(
     includeReactions?: boolean;
     // Exclusive lower bound on reply ts; Slack still returns the root first.
     oldest?: string;
+    // false skips files.info lookups; callers enrich only what they output.
+    enrichFiles?: boolean;
   },
 ): Promise<SlackMessageSummary[]> {
   const out: SlackMessageSummary[] = [];
@@ -297,13 +301,21 @@ export async function fetchThread(
       const files = asArray(m.files)
         .map((f) => toSlackFileSummary(f))
         .filter((f): f is SlackFileSummary => f !== null);
-      const enrichedFiles = files.length > 0 ? await enrichFiles(client, files) : undefined;
+      const enrichedFiles =
+        files.length === 0
+          ? undefined
+          : input.enrichFiles === false
+            ? files
+            : await enrichFiles(client, files);
 
       const text = getString(m.text) ?? "";
+      const edited = isRecord(m.edited) ? m.edited : undefined;
       out.push({
         channel_id: input.channelId,
         ts: getString(m.ts) ?? "",
         thread_ts: getString(m.thread_ts),
+        edited_ts: edited ? getString(edited.ts) : undefined,
+        subtype: getString(m.subtype),
         reply_count: getNumber(m.reply_count),
         user: getString(m.user),
         bot_id: getString(m.bot_id),

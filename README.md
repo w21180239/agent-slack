@@ -76,7 +76,7 @@ agent-slack
 ├── message
 │   ├── get   <target>             # fetch 1 message (+ thread meta )
 │   ├── list  <target>             # fetch thread or recent channel messages
-│   ├── watch <target>             # follow a thread: stream new replies as NDJSON
+│   ├── watch <targets...>         # follow threads: report new/edited/deleted replies
 │   ├── send  <target> [text]      # send / reply / schedule (supports --attach, --blocks)
 │   ├── scheduled
 │   │   ├── list                   # list pending scheduled messages
@@ -204,14 +204,19 @@ agent-slack message list "#general" --with-reaction eyes --oldest "1770165109.00
 agent-slack message list "#general" --without-reaction dart --oldest "1770165109.000000" --limit 20
 ```
 
-Follow a thread instead of re-reading it by hand. `message watch` polls the thread and prints one JSON line per new reply (`event: "reply"`), framed by a `watching` line and a final `done` line (`reason: "count"` or `"timeout"`). Replies you post through agent-slack (API posts, no `client_msg_id`) are skipped so an agent is not woken by its own sends; replies you type in Slack still report. `--include-self` reports both.
+Follow threads instead of re-reading them by hand. `message watch` polls each thread and prints one JSON line per batch of changes (`event: "update"`, with `new`, `edited` and `deleted` per thread), framed by a `watching` line and a final `done` line (`reason: "once"` or `"timeout"`).
+
+- **One wake per burst.** A batch waits `--settle` (default 15s) of quiet, so several quick replies arrive together. Polls back off from `--interval` (15s) to `--max-interval` (2m) while threads are quiet and snap back on any change.
+- **Edits and deletes.** Threads up to 200 messages are read in full each poll and diffed, so edited (with `before` text) and deleted replies are reported; reactions and link unfurls are not. Larger threads read only new replies, with a full sweep every 10th poll. `--no-edits` reads only new replies.
+- **Resumable.** State is saved under `~/.agent-slack/watch/`, so re-running the same command reports everything that changed while nothing was watching, without repeats. `--fresh` starts from now; `--no-state` saves nothing; `--since <ts>` starts fresh from that ts.
+- **Your own agent-slack posts and edits are skipped** (API posts carry no `client_msg_id`), so an agent is not woken by its own sends; changes you make in Slack still report. `--include-self` reports both.
 
 ```bash
-# Block until the next reply, then exit (good for a background agent task)
-agent-slack message watch "https://workspace.slack.com/archives/C123/p1700000000000000" --count 1 --timeout 2h
+# Wake on the next batch of changes, then exit (run as a background task; re-run to resume)
+agent-slack message watch "https://workspace.slack.com/archives/C123/p1700000000000000" --once --timeout 2h
 
-# Stream every new reply for a day, polling each minute
-agent-slack message watch "https://workspace.slack.com/archives/C123/p1700000000000000" --interval 1m --timeout 1d
+# Follow two threads for a day as one stream
+agent-slack message watch "<thread-url-1>" "<thread-url-2>" --timeout 1d
 ```
 
 Optional:
